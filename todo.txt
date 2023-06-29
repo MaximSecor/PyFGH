@@ -1,0 +1,9 @@
+# PyFGH
+
+To Do:
+FGH code (Completed 26 June, needed: Possible further testing of MCSCF, visualization of wavefunctions)
+FGH for quantizing a proton (Do 27 June)
+FGH for normal mode analysis
+IRSEC module
+FGH for vibrational polarizabilities
+FGH for vibronic

@@ -1,5 +1,5 @@
-from FGH import FGH_object
-from utilities import read_input, read_potential
+from fgh import FGH_object
+from src.pyfgh.utilities import read_input, read_potential
 import numpy as np
 import datetime
 
