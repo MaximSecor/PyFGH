@@ -1,4 +1,4 @@
-# basicmathmas
+# PyFGH
 PyFGH is a Python library for dealing with FGH
 
 ## Installation

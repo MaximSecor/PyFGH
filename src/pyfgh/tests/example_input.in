@@ -1,6 +1,0 @@
-calctype = 0
-method=MCSCF
-readin = 0
-nx = 16, 16
-dx = 1, 1
-mass = 1

@@ -1,82 +1,125 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Created on Sat Jun 17 23:25:23 2023
+This module implements the main functionality of pyFGH.
 
-@author: maximsecor
+::::Functions included::::
+fgh_hardcode_1d: Hard-coded FCI, jitted 1D FGH
+fgh_hardcode_2d: Hard-coded FCI, jitted 2D FGH, same number of grid points and same distance between grid points in each dimension
+fgh_hardcode_3d: Hard-coded FCI, jitted 3D FGH, same number of grid points and same distance between grid points in each dimension
+fgh_flex: FCI FGH flexible accept any number of dimensions with any number of points and any distance seperation along each dimension
+fgh_mcscf: MCSCF FGH flexible accept any number of dimensions with any number of points and any distance seperation along each dimension
+
+::::Classes included::::
+fgh_object:
+
 """
+
+__author__ = "Maxim Secor"
+__email__ = "maxim.secor@yale.edu"
 
 import numpy as np
-import matplotlib.pyplot as plt
-import scipy.interpolate as interpolate
-from pyscf import gto, scf, dft, qmmm
 from numba import jit
 import itertools
-import time
 
 @jit(nopython=True)
-def fgh_hardcode_1d(potential,nx,dx,mass):
+def fgh_hardcode_1d(potential: np.ndarray, nx: int, dx: float, mass: float) -> 'tuple[np.ndarray]':
     
+    '''Hard-coded, jitted 1D FGH
+
+    Args:
+        potential : 1D ndarray
+            Potential energy in Hartree along 1 dimension
+        nx : int
+            number of points along the grid
+        dx : float
+            distance between grid points
+        mass : float
+            Mass of particle
+    Returns:
+        Energy eigenvalues and eigenfunctions, tuple of a 1D ndarray and a 2D ndarray
+    '''
+        
     k = np.pi/dx
-    vmat = np.zeros((nx,nx))
-    tmat = np.zeros((nx,nx))
-    hmat = np.zeros((nx,nx))
-    
+    m = (1/(2*mass))
+    hmat = []
+
     for i in range(nx):
         for j in range(nx):
-            if i == j:
-                vmat[i,j] = potential[j]
-                tmat[i,j] = (k**2)/3
-            else:
-                dji = j-i
-                vmat[i,j] = 0
-                tmat[i,j] = (2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2))
-            hmat[i,j] = (1/(2*mass))*tmat[i,j] + vmat[i,j]
-    
-    hmat_soln = np.linalg.eigh(hmat)
-    return hmat_soln
+            dji = j-i
+            if i == j: 
+                hmat.append(potential[j] + (m*k**2)/3)
+            else: 
+                hmat.append((m*2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
+
+    hmat_soln = np.linalg.eigh(np.array(hmat).reshape(nx,nx))
+    energies = hmat_soln[0]
+    wavefunctions = hmat_soln[1].T
+
+    return energies, wavefunctions
 
 @jit(nopython=True)
-def fgh_hardcode_2d(potential,nx,dx,mass):
+def fgh_hardcode_2d(potential: np.ndarray, nx: int, dx: float, mass: float) -> 'tuple[np.ndarray]':
+
+    '''Hard-coded, jitted 2D FGH, same number of grid points and same distance between grid points in each dimension
+
+    Args:
+        potential : 2D ndarray
+            2D potential energy surface in Hartree
+        nx : int
+            Number of points in each dimension
+        dx : float
+            Distance between grid points in each dimension
+        mass : float
+            Mass of particle
+    Returns:
+        Energy eigenvalues and eigenfunctions, tuple of a 1D ndarray and a 2D ndarray
+    '''
 
     k = np.pi/dx
-    
-    vmat = 0
-    tmat = 0
-    hmat = np.zeros((nx**2,nx**2))
+    m = (1/(2*mass))
+    hmat = []
 
     for xi in range(nx):
         for xj in range(nx):
             for yi in range(nx):
                 for yj in range(nx):
                     if xi == xj and yi == yj:
-                        vmat = potential[xj,yj]
-                        tmat = (k**2)*(2/3)
+                        hmat.append(potential[xj,yj] + m*(k**2)*(2/3))
                     elif xi != xj and yi == yj:
                         dji = xj-xi
-                        vmat = 0
-                        tmat = (2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2))
+                        hmat.append(m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
                     elif xi == xj and yi != yj:
                         dji = yj-yi
-                        vmat = 0
-                        tmat = (2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2))
+                        hmat.append(m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
                     else:
-                        vmat = 0
-                        tmat = 0
-                    hmat[xi+nx*yi,xj+nx*yj] = (1/(2*mass))*tmat + vmat
+                        hmat.append(0)
 
-    hmat_soln = np.linalg.eigh(hmat)
-    return hmat_soln 
+    hmat_soln = np.linalg.eigh(np.array(hmat).reshape(nx**2,nx**2))
+    energies = hmat_soln[0]
+    wavefunctions = hmat_soln[1].T
+
+    return energies, wavefunctions
 
 @jit(nopython=True)
-def fgh_hardcode_3d(potential,nx,dx,mass):
-    
+def fgh_hardcode_3d(potential: np.ndarray, nx: int, dx: float, mass: float) -> 'tuple[np.ndarray]':
+
+    '''Hard-coded, jitted 3D FGH, same number of grid points and same distance between grid points in each dimension
+
+    Args:
+        potential : 3D ndarray
+            3D potential energy surface in Hartree
+        nx : int
+            Number of points in each dimension
+        dx : float
+            Distance between grid points in each dimension
+        mass : float
+            Mass of particle
+    Returns:
+        Energy eigenvalues and eigenfunctions, tuple of a 1D ndarray and a 2D ndarray
+    '''
+
     k = np.pi/dx
-    
-    vmat = 0
-    tmat = 0
-    
-    hmat = np.zeros((nx**3,nx**3))
+    m = 1/(2*mass)
+    hmat = []
     
     for xi in range(nx):
         for xj in range(nx):
@@ -85,31 +128,34 @@ def fgh_hardcode_3d(potential,nx,dx,mass):
                     for zi in range(nx):
                         for zj in range(nx):
                             if xi == xj and yi == yj and zi == zj:
-                                vmat = potential[xj,yj,zj]
-                                tmat = (k**2)
+                                hmat.append(potential[xj,yj,zj] + m*k**2)
                             elif xi != xj and yi == yj and zi == zj:
                                 dji = xj-xi
-                                vmat = 0
-                                tmat = (2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2))
+                                hmat.append(m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
                             elif xi == xj and yi != yj and zi == zj:
                                 dji = yj-yi
-                                vmat = 0
-                                tmat = (2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2))
+                                hmat.append(m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
                             elif xi == xj and yi == yj and zi != zj:
                                 dji = zj-zi
-                                vmat = 0
-                                tmat = (2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2))
+                                hmat.append(m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
                             else:
-                                vmat = 0
-                                tmat = 0
-                            hmat[xi+nx*yi+nx*nx*zi,xj+nx*yj+nx*nx*zj] = (1/(2*mass))*tmat + vmat
+                                hmat.append(0)
     
-    hmat_soln = np.linalg.eigh(hmat)
-    return hmat_soln
+    hmat_soln = np.linalg.eigh(np.array(hmat).reshape(nx**3,nx**3))
+    energies = hmat_soln[0]
+    wavefunctions = hmat_soln[1].T
+
+    return energies, wavefunctions
 
 def get_ID(q,nx):
+
+    '''Hard-coded, jitted 3D FGH, same number of grid points and same distance between grid points in each dimension
+
+    Args: Distance between grid points in each dimension
+    Returns: Energy eigenvalues and eigenfunctions, tuple of a 1D ndarray and a 2D ndarray
+    '''
+
     q_idx = []
-    
     t = 1
     for i in nx:
         q_idx.append((q//t)%i)
@@ -118,6 +164,21 @@ def get_ID(q,nx):
     return q_idx
 
 def fgh_flex(potential,nx,dx,mass):
+
+    '''Hard-coded, jitted 3D FGH, same number of grid points and same distance between grid points in each dimension
+
+    Args:
+        potential : 1D ndarray
+            N-dimensional potential energy surface in Hartree flattened into a 1D array
+        nx : list[float]
+            Number of points in each dimension
+        dx : list[int]
+            Distance between grid points in each dimension
+        mass : float
+            Mass of particle
+    Returns:
+        Energy eigenvalues and eigenfunctions, tuple of a 1D ndarray and a 2D ndarray
+    '''
 
     k = np.pi/dx
     dh = np.prod(nx)
@@ -199,7 +260,7 @@ def fgh_mcscf(potential,nx,dx,mass,SCF_iter = 2,basis_size = 5):
 
 class FGH_object:
 
-    def __init__(self, potential: list[float], nx: list[int], dx: list[int], mass: int):
+    def __init__(self, potential: 'list[float]', nx: 'list[int]', dx: 'list[int]', mass: int):
         self.potential = potential
         self.nx = nx
         self.dx = dx

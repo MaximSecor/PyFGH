@@ -1,9 +1,10 @@
 # PyFGH
 
 To Do:
+
 FGH code (Completed 26 June, needed: Possible further testing of MCSCF, visualization of wavefunctions)
-FGH for quantizing a proton (Do 27 June)
-FGH for normal mode analysis
-IRSEC module
-FGH for vibrational polarizabilities
-FGH for vibronic
+FGH for quantizing a proton: defined box, autobox, cutoff tests,gridpoint density tests, CUDA
+FGH for normal mode analysis and vibrational polarizabilities: all pyscf
+IRSEC module: for gaussian logs and pyscf
+
+**FGH for vibronic: will require extensive work
