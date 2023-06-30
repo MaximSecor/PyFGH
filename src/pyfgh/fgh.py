@@ -1,14 +1,27 @@
 """
+===================================
+===================================
+              ______  _____  _   _  
+              |  ___||  __ \| | | | 
+ _ __   _   _ | |_   | |  \/| |_| | 
+| '_ \ | | | ||  _|  | | __ |  _  | 
+| |_) || |_| || |    | |_\ \| | | | 
+| .__/  \__, |\_|     \____/\_| |_/ 
+| |      __/ |                      
+|_|     |___/                       
+===================================
+===================================
+
 This module implements the main functionality of pyFGH.
 
-::::Functions included::::
-fgh_hardcode_1d: Hard-coded FCI, jitted 1D FGH
+-----::::Functions included::::-----
+fgh_hardcode_1d: This function is a hard-coded, jitted 1D FGH calculation
 fgh_hardcode_2d: Hard-coded FCI, jitted 2D FGH, same number of grid points and same distance between grid points in each dimension
 fgh_hardcode_3d: Hard-coded FCI, jitted 3D FGH, same number of grid points and same distance between grid points in each dimension
 fgh_flex: FCI FGH flexible accept any number of dimensions with any number of points and any distance seperation along each dimension
 fgh_mcscf: MCSCF FGH flexible accept any number of dimensions with any number of points and any distance seperation along each dimension
 
-::::Classes included::::
+-----::::Classes included::::-----
 fgh_object:
 
 """
@@ -23,21 +36,20 @@ import itertools
 @jit(nopython=True)
 def fgh_hardcode_1d(potential: np.ndarray, nx: int, dx: float, mass: float) -> 'tuple[np.ndarray]':
     
-    '''Hard-coded, jitted 1D FGH
+    """
+    fgh_hardcode_1d : This function is a hard-coded, jitted 1D FGH calculation
 
-    Args:
-        potential : 1D ndarray
-            Potential energy in Hartree along 1 dimension
-        nx : int
-            number of points along the grid
-        dx : float
-            distance between grid points
-        mass : float
-            Mass of particle
-    Returns:
-        Energy eigenvalues and eigenfunctions, tuple of a 1D ndarray and a 2D ndarray
-    '''
-        
+    ---Args---
+        potential : 1D ndarray : potential energy in Hartree along 1 dimension
+        nx        : int        : number of points along the grid
+        dx        : float      : distance between grid points
+        mass      : float      : mass of the particle
+
+    ---Returns---
+        energies      : 1D ndarray : Energy eigenvalues in Hartree
+        wavefunctions : 2D ndarray : Energy eigenfunctions
+    """
+
     k = np.pi/dx
     m = (1/(2*mass))
     hmat = []
@@ -59,20 +71,19 @@ def fgh_hardcode_1d(potential: np.ndarray, nx: int, dx: float, mass: float) -> '
 @jit(nopython=True)
 def fgh_hardcode_2d(potential: np.ndarray, nx: int, dx: float, mass: float) -> 'tuple[np.ndarray]':
 
-    '''Hard-coded, jitted 2D FGH, same number of grid points and same distance between grid points in each dimension
+    """
+    fgh_hardcode_2d : This function is a hard-coded, jitted 2D FGH calculation. The number of grid points and distance between grid points is the same for ALL dimension
 
-    Args:
-        potential : 2D ndarray
-            2D potential energy surface in Hartree
-        nx : int
-            Number of points in each dimension
-        dx : float
-            Distance between grid points in each dimension
-        mass : float
-            Mass of particle
-    Returns:
-        Energy eigenvalues and eigenfunctions, tuple of a 1D ndarray and a 2D ndarray
-    '''
+    ---Args---
+        potential : 2D ndarray : 2D potential energy surface in Hartree
+        nx        : int        : number of points along the grid
+        dx        : float      : distance between grid points
+        mass      : float      : mass of the particle
+
+    ---Returns---
+        energies      : 1D ndarray : Energy eigenvalues in Hartree
+        wavefunctions : 2D ndarray : Energy eigenfunctions
+    """
 
     k = np.pi/dx
     m = (1/(2*mass))
@@ -102,20 +113,19 @@ def fgh_hardcode_2d(potential: np.ndarray, nx: int, dx: float, mass: float) -> '
 @jit(nopython=True)
 def fgh_hardcode_3d(potential: np.ndarray, nx: int, dx: float, mass: float) -> 'tuple[np.ndarray]':
 
-    '''Hard-coded, jitted 3D FGH, same number of grid points and same distance between grid points in each dimension
+    """
+    fgh_hardcode_3d : This function is a hard-coded, jitted 3D FGH calculation. The number of grid points and distance between grid points is the same for ALL dimension
 
-    Args:
-        potential : 3D ndarray
-            3D potential energy surface in Hartree
-        nx : int
-            Number of points in each dimension
-        dx : float
-            Distance between grid points in each dimension
-        mass : float
-            Mass of particle
-    Returns:
-        Energy eigenvalues and eigenfunctions, tuple of a 1D ndarray and a 2D ndarray
-    '''
+    ---Args---
+        potential : 3D ndarray : 3D potential energy surface in Hartree
+        nx        : int        : number of points along the grid
+        dx        : float      : distance between grid points
+        mass      : float      : mass of the particle
+
+    ---Returns---
+        energies      : 1D ndarray : Energy eigenvalues in Hartree
+        wavefunctions : 2D ndarray : Energy eigenfunctions
+    """
 
     k = np.pi/dx
     m = 1/(2*mass)
@@ -147,13 +157,18 @@ def fgh_hardcode_3d(potential: np.ndarray, nx: int, dx: float, mass: float) -> '
 
     return energies, wavefunctions
 
-def get_ID(q,nx):
+def get_ID(q: int, nx: int) -> 'list[int]':
 
-    '''Hard-coded, jitted 3D FGH, same number of grid points and same distance between grid points in each dimension
+    """
+    get_ID : This function allows the fgh_flex function to index discrete variable representation (DVR) Hartree product basis functions along each dimension
 
-    Args: Distance between grid points in each dimension
-    Returns: Energy eigenvalues and eigenfunctions, tuple of a 1D ndarray and a 2D ndarray
-    '''
+    ---Args---
+        q  : int : DVR hartree product basis function index
+        nx : int : number of points along the grid
+
+    ---Returns---
+        q_idx : list[int] : list of indices of the basis function in each dimension
+    """
 
     q_idx = []
     t = 1
@@ -163,22 +178,21 @@ def get_ID(q,nx):
 
     return q_idx
 
-def fgh_flex(potential,nx,dx,mass):
+def fgh_flex(potential: np.ndarray, nx: 'list[int]', dx: 'list[float]', mass: int) -> 'tuple[np.ndarray]':
 
-    '''Hard-coded, jitted 3D FGH, same number of grid points and same distance between grid points in each dimension
+    """
+    fgh_flex : This function performs FGH calculation in any dimension with any number of grid points spaced consistently across individual dimensions.
 
-    Args:
-        potential : 1D ndarray
-            N-dimensional potential energy surface in Hartree flattened into a 1D array
-        nx : list[float]
-            Number of points in each dimension
-        dx : list[int]
-            Distance between grid points in each dimension
-        mass : float
-            Mass of particle
-    Returns:
-        Energy eigenvalues and eigenfunctions, tuple of a 1D ndarray and a 2D ndarray
-    '''
+    ---Args---
+        potential : 1D ndarray : N-dimensional potential energy surface in Hartree
+        nx        : list       : number of points along the grid
+        dx        : list       : distance between grid points
+        mass      : float      : mass of the particle
+
+    ---Returns---
+        energies      : 1D ndarray : Energy eigenvalues in Hartree
+        wavefunctions : 2D ndarray : Energy eigenfunctions
+    """
 
     k = np.pi/dx
     dh = np.prod(nx)
@@ -206,19 +220,53 @@ def fgh_flex(potential,nx,dx,mass):
     hmat_soln = np.linalg.eigh(hmat)
     return hmat_soln
 
-def tensor_product(arrays):
+def tensor_product(arrays: 'list[np.ndarray]'):
+
+    """
+    tensor_product : This function is used by fgh_mcasf to iteratively takes outer products N of a list of 1D ndarrays
+
+    ---Args---
+        arrays  : list : list of ndarrays containing basis functions produced from the dimensional SCF procedure
+
+    ---Returns---
+        result : ND ndarray : list of indices of the basis function in each dimension
+    """
+
     result = arrays[0]
     for i in range(1, len(arrays)):
         result = np.tensordot(result, arrays[i], axes=0)
     return result
 
-def average_except_one(tensor, axis):
+def average_except_one(tensor: np.ndarray, axis: int):
+
+    """
+    tensor_product : This function is used by fgh_mcasf to take the average along all dimensions except one
+
+    ---Args---
+        tensor  : ND np.ndarray : The ...
+        axis    : int           : The average along which the mean field potential is being calculated
+
+    ---Returns---
+        result : 1D ndarray : list of indices of the basis function in each dimension
+    """
+        
     dimensions = len(tensor.shape)
     axes = tuple(i for i in range(dimensions) if i != axis)
     average = np.sum(tensor, axis=axes)
     return average
 
 def mean_field_potential(potential, wavefnc, axis):
+
+    """
+    tensor_product : This function is used by fgh_mcasf to take the average along all dimensions except one
+
+    ---Args---
+        tensor  : ND np.ndarray : The ...
+        axis    : int           : The average along which the mean field potential is being calculated
+
+    ---Returns---
+        result : 1D ndarray : list of indices of the basis function in each dimension
+    """
     
     wavefnc_temp = []
     for k,wave_k in enumerate(wavefnc):
@@ -231,10 +279,26 @@ def mean_field_potential(potential, wavefnc, axis):
 
 def fgh_mcscf(potential,nx,dx,mass,SCF_iter = 2,basis_size = 5):
 
+    """
+    fgh_mcscf : This function performs FGH calculation in any dimension with any number of grid points spaced consistently across individual dimensions.
+
+    ---Args---
+        potential  : 1D ndarray : N-dimensional potential energy surface in Hartree
+        nx         : list       : Number of points along the grid
+        dx         : list       : Distance between grid points
+        mass       : float      : Mass of the particle
+        SCF_iter   : float      : Number of SCF cycles (2)
+        basis_size : float      : Basis set size (5)
+
+    ---Returns---
+        energies      : 1D ndarray : Energy eigenvalues in Hartree
+        wavefunctions : 2D ndarray : Energy eigenfunctions
+    """
+
     potential = potential.reshape(nx)
     wavefnc = [np.array([np.sqrt(1/nx[i]) for j in range(nx[i])]) for i in range(len(nx))]
 
-    for k in range(SCF_iter):
+    for _ in range(SCF_iter):
         mean_field_pots = [mean_field_potential(potential, wavefnc, axis) for axis in range(len(wavefnc))]
         wavefnc = [fgh_hardcode_1d(pot,nx[i],dx[i],mass)[1].T[0] for i, pot in enumerate(mean_field_pots)]
                                 
@@ -258,9 +322,32 @@ def fgh_mcscf(potential,nx,dx,mass,SCF_iter = 2,basis_size = 5):
 
     return hmat_soln
 
-class FGH_object:
+class fgh_object:
+
+    """
+    fgh_object: This class provides a brief description of the purpose and functionality of the class.
+
+    ---Methods---
+        potential  : 1D ndarray : N-dimensional potential energy surface in Hartree
+        nx         : list       : Number of points along the grid
+    
+    ---Usage---
+        Instantiate the class : `instance = ClassName()`
+        Access class methods  : `instance.method()`
+    """
 
     def __init__(self, potential: 'list[float]', nx: 'list[int]', dx: 'list[int]', mass: int):
+
+        """
+        __init__ method: This method initializes the class instance.
+
+        Args:
+        - parameter1: Description of parameter1.
+        - parameter2: Description of parameter2.
+        - parameter1: Description of parameter1.
+        - parameter2: Description of parameter2.
+        """
+
         self.potential = potential
         self.nx = nx
         self.dx = dx
@@ -270,6 +357,16 @@ class FGH_object:
         return f"The potential is {len(self.nx)} dimensional.\nThe length of the dimensions are {np.array(nx)*np.array(dx)}"
     
     def fgh_fci_solve(self):
+
+        """
+        fgh_fci_solve(): Brief description of method1.
+
+        Args:
+        - parameter: Description of parameter.
+
+        Returns:
+        - Description of return value.
+        """
 
         q = sum([1 if i != self.nx[0] else 0 for i in self.nx])
         q += sum([1 if i != self.dx[0] else 0 for i in self.dx])
