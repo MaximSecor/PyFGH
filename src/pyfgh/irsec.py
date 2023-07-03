@@ -2,18 +2,13 @@ import cclib
 import seaborn as sns; sns.set()
 import numpy as np
 import matplotlib.pyplot as plt
-import os
+import matplotlib as mpl
 
-sns.set_color_codes()
+class freq_data(object):
 
-idx = 0
-molecule = 10
-
-class IRSpec(object):
-
-    def __init__(self,logfile):
+    def __init__(self, logfile, scaling_factor):
         self.data  = cclib.io.ccread(logfile)
-        self.scale = 0.962 #Scaling that worked well for aromatic systems with intramolecular PCET processes
+        self.scale = scaling_factor
         self.freqs = self.data.vibfreqs*self.scale
         self.irs   = self.data.vibirs
         self.FWHM  = 6
@@ -29,34 +24,24 @@ class IRSpec(object):
         self.curve = np.zeros_like(self.x) 
         for band in bands:
             self.curve += self.lorentzian(band[0],band[1],self.x,self.FWHM) 
-     
 
-class Molecule(object):
-    def __init__(self,prefix,alt_name=None):
-        self.prefix  = str(prefix)
-        path = os. getcwd() # Change to being CD
-
-        for state in ['neutral','E0PT','E1PT']:                          # make these an input
-            logfile = path+'/'+state+'.log'
-            if os.path.isfile(logfile):
-                setattr(self,state.lower(),IRSpec(path+'/opt_freq/'+state+'.log'))
-                if alt_name:
-                    NAME = alt_name
-                else:
-                    NAME = self.prefix
-                if state == 'neutral':
-                    setattr(getattr(self,state.lower()),'name','['+NAME+']')
-                else:
-                    setattr(getattr(self,state.lower()),'name','['+NAME+']$^{+}$')
-  
-        self.freq  = self.neutral.x # assumes neutral always exists! 
-
-    def plotSpectra(self,curves=[],interpolate=False,num=5,xlim=None,save=None,show=True,colors=None):
+class IRSEC:
+    
+    def __init__(self, neutral_logfile, other_files, scaling_factor):
         
-        curves = [curves] if isinstance(curves, IRSpec) else curves
-
-        if not xlim:
-            xlim = [max(self.freq),min(self.freq)]
+        self.color_dict = {"blue": "#4472C4", "green": "#70AD47", "orange": "#ED7D31", "purple": "#7030A0", "yellow": "#BF9000", "red": "#377F80", "Orange": "#ED7D31", "Pink": "#FFOOFF", "black": "#000000"}
+        self.neutral = freq_data(neutral_logfile, scaling_factor)
+        self.freq  = self.neutral.x
+        
+        self.others = []
+        for file in other_files:
+            self.others.append(freq_data(file, scaling_factor))
+            
+    def plotSpectra(self,other_file_idx,xlim,num=5,show=True,save='-IRSEC_E1PT.png',colors='blue'):
+        
+        mpl.rcParams['font.family'] = 'Helvetica'
+        plt.rcParams['font.size'] = 18
+        plt.rcParams['axes.linewidth'] = 2
         
         fig,ax = plt.subplots(figsize=(8,6))
         ax.tick_params(width=2)
@@ -64,111 +49,48 @@ class Molecule(object):
         for axis in ['top','bottom','left','right']:
             ax.spines[axis].set_linewidth(2)
 
-        if interpolate:
-            start = curves[0]
-            finish = curves[-1]
-            #ax.set_prop_cycle('color',plt.cm.Reds(np.linspace(0.3,1,num)))
-            for step in np.linspace(0,num,num=num):
-                curve = ((num - step)/num)*start.curve + (step/num)*finish.curve
-                if step == 0:
-                    label = start.name
-                    color = 'black'
-                    zorder = 2
-                    linewidth = 2
-                elif step == np.linspace(0,num,num=num)[-1]:
-                    label = finish.name
-                    if not colors:
-                        color = 'r'
-                    else:
-                        color = colors
-                    zorder = 3
-                    linewidth = 2
-                else:
-                    label = None
-                    color = 'gray'
-                    zorder = 1
-                    linewidth = 1
-                plt.plot(self.freq,curve,label=label,color=color,zorder=zorder,lw=linewidth)
-            # fit each plot appropriately given the curve heights within the bounds of xlim
-            my_idx = (self.freq > min(xlim))*(self.freq < max(xlim))
-            plt.ylim([-50,1.2*max(max(start.curve[my_idx]),max(finish.curve[my_idx]))])
+        start = self.neutral
+        finish = self.others[other_file_idx]
+        
+        for step in np.linspace(0,num,num=num):
+            curve = ((num - step)/num)*start.curve + (step/num)*finish.curve
+            if step == 0:
+                label = 'Neutral'
+                color = 'k'
+                zorder = 2
+                linewidth = 3
+            elif step == np.linspace(0,num,num=num)[-1]:
+                label = 'E0PT'
+                color = 'b'
+                zorder = 3
+                linewidth = 3
+            else:
+                label = None
+                color = 'gray'
+                zorder = 1
+                linewidth = 1
+            plt.plot(self.freq,curve,label=label,color=color,zorder=zorder,lw=linewidth)
+            
+        my_idx = (self.freq > min(xlim))*(self.freq < max(xlim))
+        plt.ylim([-50,1.2*max(max(start.curve[my_idx]),max(finish.curve[my_idx]))])
 
-        # e.g. no interpolation! finish = None
-        else:
-            if colors: assert len(colors) == len(curves)
-            #ax.set_prop_cycle('color',plt.cm.tab10(np.linspace(0.2,0.8,len(curves))))
-            #ax.set_prop_cycle('color',plt.cm.tab10(range(10)))
-            for idx,spec in enumerate(curves):
-                if colors:
-                    color = colors[idx]
-                else: color = None
-                plt.plot(self.freq,spec.curve,label=spec.name,color=color)
-                plt.ylim([-50,1300])
-    
-        plt.legend(fontsize=20)
+        plt.legend(fontsize=24)
         plt.xlim(xlim)
         plt.xticks(np.arange(min(xlim),max(xlim),75),fontsize=20)
         ax.set_xticks(np.arange(min(xlim),max(xlim),25),minor=True)
-       
         plt.yticks([0],fontsize=20)
-        #plt.grid(color='gray',alpha=0.4)
-        #plt.grid(color='gray',alpha=0.4,which='both',ls='--')
         ax.xaxis.grid(True, which='both',ls='--',alpha=0.4,color='gray') 
-        plt.xlabel(r'$\tilde{\nu}$ (cm$^{-1}$)',fontsize=24)
-        plt.ylabel('Intensity (arb. units)',fontsize=24)
 
-        if save:
-            if isinstance(save,str):
-                plt.tight_layout()
-                plt.savefig(save,dpi=400)
-            else:
-                raise ValueError("'save' needs to be your filename!")
-        if show:
-            plt.show()
+        if save: plt.savefig(save,dpi=600)
+        if show: plt.show()
+        
         plt.close()
 
-    def plotDifference(self,mol1,mol2,xlim=None,save=None,show=True):
-        if not xlim:
-            xlim = [max(mol1.x),min(mol1.x)]
-        fig,ax = plt.subplots()
-        label = "$\Delta$ Abs. "+str(mol1.name)+'$-$'+str(mol2.name)
-        plt.plot(self.freq,mol1.curve-mol2.curve,label=label)
-        plt.legend(fontsize=20)
-        plt.xlim(xlim)
-        plt.xticks(np.arange(min(xlim),max(xlim),500))
-        ax.set_xticks(np.arange(min(xlim),max(xlim),100),minor=True)
-        #plt.ylim([-50,max(max(start.curve),max(finish.curve))])
-        plt.yticks([0])
-        plt.grid(color='gray',alpha=0.4)
-        plt.grid(color='gray',alpha=0.4,which='minor',ls='--')
-        plt.xlabel(r'$\tilde{\nu}$ (cm$^{-1}$)')
-        plt.ylabel('$\Delta$ Intensity (arb. units)')
-        if save:
-            if isinstance(save,str):
-                plt.tight_layout()
-                plt.savefig(save)
-            else:
-                raise ValueError("'save' needs to be your filename!")
-        if show:
-            plt.show()
-        plt.close()
+if __name__ == "__main__":
 
-    def dumpVibs(self,which,thresh=75,output=None):
-        """ Return some number peaks from the frequency calculation
-            Variables:
-            thresh = float. minimum intensity.
+    path_neutral = '/Users/maximsecor/Desktop/BIP/ElectroChem/Results/BIP/opt_freq/neutral.log'
+    path_other = ['/Users/maximsecor/Desktop/BIP/ElectroChem/Results/BIP/opt_freq/E0PT.log','/Users/maximsecor/Desktop/BIP/ElectroChem/Results/BIP/opt_freq/E1PT.log']
+    scaling_factor = 0.962
 
-            Returns: Energy (cm-1), Intensity 
-        """
-
-        idx = np.where(which.irs > thresh)
-        peaks = np.hstack((which.freqs[idx].reshape(-1,1),which.irs[idx].reshape(-1,1)))[::-1]
-        if output:
-            np.savetxt(output,peaks,fmt='%.1f',delimiter=',')
-
-if __name__ == '__main__':
-    mol = Molecule(molecule,alt_name = "MeBIP")
-    mol.plotSpectra(curves=[mol.neutral,mol.e1pt],interpolate=True,num=5,xlim=[1700,1450],show=True,save='-IRSEC_E1PT.png',colors='blue')
-
-color_dict = {"blue": "#4472C4", "green": "#70AD47", "orange": "#ED7D31", "purple": "#7030A0", "yellow": "#BF9000", "red": "#377F80", "Orange": "#ED7D31", "Pink": "#FFOOFF", }
-
+    mol = IRSEC(path_neutral, path_other, scaling_factor)
+    mol.plotSpectra(0,num=5,xlim=[1650,1500],show=True,save='test.png',colors='blue')

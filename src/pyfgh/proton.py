@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from pyscf import gto, scf, dft, cc
 from numba import jit
 import scipy.interpolate as interpolate
-from fgh import FGH_object
+from fgh import fgh_object
 
 dx = 0.025
 dist_x_0 = 1.75

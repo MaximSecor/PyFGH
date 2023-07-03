@@ -32,9 +32,10 @@ __email__ = "maxim.secor@yale.edu"
 import numpy as np
 from numba import jit
 import itertools
+import matplotlib.pyplot as plt
 
 @jit(nopython=True)
-def fgh_hardcode_1d(potential: np.ndarray, nx: int, dx: float, mass: float) -> 'tuple[np.ndarray]':
+def fgh_hardcode_1d(potential: np.ndarray, nx: int, dx: float, mass: float) -> tuple:
     
     """
     fgh_hardcode_1d : This function is a hard-coded, jitted 1D FGH calculation
@@ -69,7 +70,7 @@ def fgh_hardcode_1d(potential: np.ndarray, nx: int, dx: float, mass: float) -> '
     return energies, wavefunctions
 
 @jit(nopython=True)
-def fgh_hardcode_2d(potential: np.ndarray, nx: int, dx: float, mass: float) -> 'tuple[np.ndarray]':
+def fgh_hardcode_2d(potential: np.ndarray, nx: int, dx: float, mass: float) -> tuple:
 
     """
     fgh_hardcode_2d : This function is a hard-coded, jitted 2D FGH calculation. The number of grid points and distance between grid points is the same for ALL dimension
@@ -87,31 +88,32 @@ def fgh_hardcode_2d(potential: np.ndarray, nx: int, dx: float, mass: float) -> '
 
     k = np.pi/dx
     m = (1/(2*mass))
-    hmat = []
 
+    hmat = np.zeros((nx**2,nx**2))
     for xi in range(nx):
         for xj in range(nx):
             for yi in range(nx):
                 for yj in range(nx):
                     if xi == xj and yi == yj:
-                        hmat.append(potential[xj,yj] + m*(k**2)*(2/3))
+                        hmat[xi+nx*yi,xj+nx*yj] = potential[xj,yj] + m*(k**2)*(2/3)
                     elif xi != xj and yi == yj:
                         dji = xj-xi
-                        hmat.append(m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
+                        hmat[xi+nx*yi,xj+nx*yj] = m*((2*k**2)/(np.pi**2))*(((-1)**dji)/(dji**2))
                     elif xi == xj and yi != yj:
                         dji = yj-yi
-                        hmat.append(m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
+                        hmat[xi+nx*yi,xj+nx*yj] = m*((2*k**2)/(np.pi**2))*(((-1)**dji)/(dji**2))
                     else:
-                        hmat.append(0)
+                        hmat[xi+nx*yi,xj+nx*yj] = 0
 
-    hmat_soln = np.linalg.eigh(np.array(hmat).reshape(nx**2,nx**2))
+    hmat_soln = np.linalg.eigh(hmat)
+
     energies = hmat_soln[0]
     wavefunctions = hmat_soln[1].T
 
     return energies, wavefunctions
 
 @jit(nopython=True)
-def fgh_hardcode_3d(potential: np.ndarray, nx: int, dx: float, mass: float) -> 'tuple[np.ndarray]':
+def fgh_hardcode_3d(potential: np.ndarray, nx: int, dx: float, mass: float) -> tuple:
 
     """
     fgh_hardcode_3d : This function is a hard-coded, jitted 3D FGH calculation. The number of grid points and distance between grid points is the same for ALL dimension
@@ -128,8 +130,8 @@ def fgh_hardcode_3d(potential: np.ndarray, nx: int, dx: float, mass: float) -> '
     """
 
     k = np.pi/dx
-    m = 1/(2*mass)
-    hmat = []
+    m = (1/(2*mass))
+    hmat = np.zeros((nx**3,nx**3))
     
     for xi in range(nx):
         for xj in range(nx):
@@ -138,26 +140,24 @@ def fgh_hardcode_3d(potential: np.ndarray, nx: int, dx: float, mass: float) -> '
                     for zi in range(nx):
                         for zj in range(nx):
                             if xi == xj and yi == yj and zi == zj:
-                                hmat.append(potential[xj,yj,zj] + m*k**2)
+                                hmat[xi+nx*yi+nx*nx*zi,xj+nx*yj+nx*nx*zj] = m*(k**2) + potential[xj,yj,zj]
                             elif xi != xj and yi == yj and zi == zj:
                                 dji = xj-xi
-                                hmat.append(m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
+                                hmat[xi+nx*yi+nx*nx*zi,xj+nx*yj+nx*nx*zj] = m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2))
                             elif xi == xj and yi != yj and zi == zj:
                                 dji = yj-yi
-                                hmat.append(m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
+                                hmat[xi+nx*yi+nx*nx*zi,xj+nx*yj+nx*nx*zj] = m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2))
                             elif xi == xj and yi == yj and zi != zj:
                                 dji = zj-zi
-                                hmat.append(m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
-                            else:
-                                hmat.append(0)
+                                hmat[xi+nx*yi+nx*nx*zi,xj+nx*yj+nx*nx*zj] = m*(2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2))
     
-    hmat_soln = np.linalg.eigh(np.array(hmat).reshape(nx**3,nx**3))
+    hmat_soln = np.linalg.eigh(hmat)
     energies = hmat_soln[0]
     wavefunctions = hmat_soln[1].T
 
     return energies, wavefunctions
 
-def get_ID(q: int, nx: int) -> 'list[int]':
+def get_ID(q: int, nx: int) -> list:
 
     """
     get_ID : This function allows the fgh_flex function to index discrete variable representation (DVR) Hartree product basis functions along each dimension
@@ -167,7 +167,7 @@ def get_ID(q: int, nx: int) -> 'list[int]':
         nx : int : number of points along the grid
 
     ---Returns---
-        q_idx : list[int] : list of indices of the basis function in each dimension
+        q_idx : list[int] : list of indices of length N providing an N-dimensional index of the qth DVR basis function
     """
 
     q_idx = []
@@ -178,16 +178,16 @@ def get_ID(q: int, nx: int) -> 'list[int]':
 
     return q_idx
 
-def fgh_flex(potential: np.ndarray, nx: 'list[int]', dx: 'list[float]', mass: int) -> 'tuple[np.ndarray]':
+def fgh_flex(potential: np.ndarray, nx: np.ndarray, dx: np.ndarray, mass: int) -> tuple:
 
     """
     fgh_flex : This function performs FGH calculation in any dimension with any number of grid points spaced consistently across individual dimensions.
 
     ---Args---
-        potential : 1D ndarray : N-dimensional potential energy surface in Hartree
-        nx        : list       : number of points along the grid
-        dx        : list       : distance between grid points
-        mass      : float      : mass of the particle
+        potential : 1D ndarray : Flattened N-dimensional potential energy surface in Hartree 
+        nx        : 1D ndarray : Interger numbers of points on the grid in each dimension
+        dx        : 1D ndarray : Distance between grid points in each dimension
+        mass      : float      : Mass of the particle
 
     ---Returns---
         energies      : 1D ndarray : Energy eigenvalues in Hartree
@@ -196,6 +196,7 @@ def fgh_flex(potential: np.ndarray, nx: 'list[int]', dx: 'list[float]', mass: in
 
     k = np.pi/dx
     dh = np.prod(nx)
+    m = (1/(2*mass))
     hmat = np.zeros((dh,dh))
 
     for i in range(dh):
@@ -205,22 +206,21 @@ def fgh_flex(potential: np.ndarray, nx: 'list[int]', dx: 'list[float]', mass: in
             id_match = [k1 == k2 for k1,k2 in zip(i_id,j_id)]
             
             if sum(id_match) == len(j_id):
-                pot = potential[j]
-                kin = 0.5*mass*np.sum([k1**2 for k1 in k])/3
-                hmat[i,j] = kin + pot
+                hmat[i,j] = m*np.sum([k1**2 for k1 in k])/3 + potential[j]
                 
             if sum(id_match) == len(j_id)-1:
                 for k1,k2 in enumerate(id_match):
                     if k2 == False:
                         dji = float(j_id[k1]-i_id[k1])
-                        kin = 0.5*mass*((2*k[k1]**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
-                pot = 0
-                hmat[i,j] = kin + pot
+                        hmat[i,j] = m*((2*k[k1]**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
 
     hmat_soln = np.linalg.eigh(hmat)
-    return hmat_soln
+    energies = hmat_soln[0]
+    wavefunctions = hmat_soln[1].T
 
-def tensor_product(arrays: 'list[np.ndarray]'):
+    return energies, wavefunctions
+
+def tensor_product(arrays: list):
 
     """
     tensor_product : This function is used by fgh_mcasf to iteratively takes outer products N of a list of 1D ndarrays
@@ -247,7 +247,7 @@ def average_except_one(tensor: np.ndarray, axis: int):
         axis    : int           : The average along which the mean field potential is being calculated
 
     ---Returns---
-        result : 1D ndarray : list of indices of the basis function in each dimension
+        average : 1D ndarray : list of indices of the basis function in each dimension
     """
         
     dimensions = len(tensor.shape)
@@ -258,14 +258,15 @@ def average_except_one(tensor: np.ndarray, axis: int):
 def mean_field_potential(potential, wavefnc, axis):
 
     """
-    tensor_product : This function is used by fgh_mcasf to take the average along all dimensions except one
+    mean_field_potential : This function calculates the meanfield potential along a given dimension
 
     ---Args---
-        tensor  : ND np.ndarray : The ...
-        axis    : int           : The average along which the mean field potential is being calculated
+        potential : ND np.ndarray : The total potential
+        wavefnc   : ND np.ndarray : The total wavefunction
+        axis      : int           : The axis associated with dimension for which the mean field potential is calculated
 
     ---Returns---
-        result : 1D ndarray : list of indices of the basis function in each dimension
+        result : 1D ndarray : The mean field potential along a given dimension 
     """
     
     wavefnc_temp = []
@@ -277,7 +278,7 @@ def mean_field_potential(potential, wavefnc, axis):
 
     return average_except_one(potential*tensor_product(wavefnc_temp), axis)
 
-def fgh_mcscf(potential,nx,dx,mass,SCF_iter = 2,basis_size = 5):
+def fgh_mcscf(potential: np.ndarray, nx: np.ndarray, dx: np.ndarray, mass: float, scf_iter = 2, basis_size = 5):
 
     """
     fgh_mcscf : This function performs FGH calculation in any dimension with any number of grid points spaced consistently across individual dimensions.
@@ -287,22 +288,24 @@ def fgh_mcscf(potential,nx,dx,mass,SCF_iter = 2,basis_size = 5):
         nx         : list       : Number of points along the grid
         dx         : list       : Distance between grid points
         mass       : float      : Mass of the particle
-        SCF_iter   : float      : Number of SCF cycles (2)
-        basis_size : float      : Basis set size (5)
+        SCF_iter   : int        : Number of SCF cycles (default = 2)
+        basis_size : int        : Basis set size in each dimension (default = 5)
 
     ---Returns---
         energies      : 1D ndarray : Energy eigenvalues in Hartree
         wavefunctions : 2D ndarray : Energy eigenfunctions
     """
 
+    nx = nx[::-1]
+    dx = dx[::-1]
     potential = potential.reshape(nx)
     wavefnc = [np.array([np.sqrt(1/nx[i]) for j in range(nx[i])]) for i in range(len(nx))]
 
-    for _ in range(SCF_iter):
+    for k in range(scf_iter):
         mean_field_pots = [mean_field_potential(potential, wavefnc, axis) for axis in range(len(wavefnc))]
-        wavefnc = [fgh_hardcode_1d(pot,nx[i],dx[i],mass)[1].T[0] for i, pot in enumerate(mean_field_pots)]
+        wavefnc = [fgh_hardcode_1d(pot,nx[i],dx[i],mass)[1][0] for i, pot in enumerate(mean_field_pots)]
                                 
-    dimensional_basis_sets = [fgh_hardcode_1d(pot,nx[i],dx[i],mass)[1].T[:basis_size] for i, pot in enumerate(mean_field_pots)]
+    dimensional_basis_sets = [fgh_hardcode_1d(pot,nx[i],dx[i],mass)[1][:basis_size] for i, pot in enumerate(mean_field_pots)]
 
     CI_idx = [[j for j in range(basis_size)] for i in range(len(nx))]
     combinations = list(itertools.product(*CI_idx))
@@ -320,7 +323,10 @@ def fgh_mcscf(potential,nx,dx,mass,SCF_iter = 2,basis_size = 5):
     hmat = -0.5*mass*tmat + vmat
     hmat_soln = np.linalg.eigh(hmat)
 
-    return hmat_soln
+    energies = hmat_soln[0]
+    wavefunctions = np.rollaxis(np.tensordot(hmat_soln[1].T,full_basis,axes=(1,0)),hmat_soln[1].T.ndim-1,1)
+
+    return energies, wavefunctions
 
 class fgh_object:
 
@@ -336,12 +342,12 @@ class fgh_object:
         Access class methods  : `instance.method()`
     """
 
-    def __init__(self, potential: 'list[float]', nx: 'list[int]', dx: 'list[int]', mass: int):
+    def __init__(self, potential: np.ndarray, nx: np.ndarray, dx: np.ndarray, mass: float):
 
         """
-        __init__ method: This method initializes the class instance.
+        __init__ method : This method initializes the class instance.
 
-        Args:
+        ---Args---
         - parameter1: Description of parameter1.
         - parameter2: Description of parameter2.
         - parameter1: Description of parameter1.
@@ -353,13 +359,10 @@ class fgh_object:
         self.dx = dx
         self.mass = mass
 
-    def __str__(self):
-        return f"The potential is {len(self.nx)} dimensional.\nThe length of the dimensions are {np.array(nx)*np.array(dx)}"
-    
     def fgh_fci_solve(self):
 
         """
-        fgh_fci_solve(): Brief description of method1.
+        fgh_fci_solve(): Brief description of method1. 1D will always be hardcoded, 
 
         Args:
         - parameter: Description of parameter.
@@ -371,14 +374,16 @@ class fgh_object:
         q = sum([1 if i != self.nx[0] else 0 for i in self.nx])
         q += sum([1 if i != self.dx[0] else 0 for i in self.dx])
 
-        if q != 0:
+        if len(self.nx) <= 3:
+            if q != 0:
+                self.solutions = fgh_flex(self.potential,self.nx,self.dx,self.mass)
+            else:
+                self.potential_reshape = self.potential.reshape(self.nx)
+                if len(self.nx) == 1: self.solutions = fgh_hardcode_1d(self.potential_reshape,self.nx[0],self.dx[0],self.mass)
+                if len(self.nx) == 2: self.solutions = fgh_hardcode_2d(self.potential_reshape,self.nx[0],self.dx[0],self.mass)
+                if len(self.nx) == 3: self.solutions = fgh_hardcode_3d(self.potential_reshape,self.nx[0],self.dx[0],self.mass)
+        else:
             self.solutions = fgh_flex(self.potential,self.nx,self.dx,self.mass)
-        
-        if q == 0:
-            self.potential_reshape = self.potential.reshape(self.nx)
-            if len(self.nx) == 1: self.solutions = fgh_hardcode_1d(self.potential_reshape,self.nx[0],self.dx[0],self.mass)
-            if len(self.nx) == 2: self.solutions = fgh_hardcode_2d(self.potential_reshape,self.nx[0],self.dx[0],self.mass)
-            if len(self.nx) == 3: self.solutions = fgh_hardcode_3d(self.potential_reshape,self.nx[0],self.dx[0],self.mass)
         
     def fgh_mcscf_solve(self):
         self.solutions = fgh_mcscf(self.potential,self.nx,self.dx,self.mass)
@@ -388,32 +393,186 @@ class fgh_object:
 
 if __name__ == "__main__":
 
-    potential = []
-    for i in range(16):
-        for j in range(32):
-            potential.append(0.5*(i-8)**2 + 0.5*((j/2)-8)**2)
-    potential = np.array(potential)
+    """
+    1d - testing
+    """
 
-    nx = np.array([32,16])
-    dx = np.array([0.5,1])
-    mass = 1
+    ### TESTING 1D HARDCODE
 
-    test_2 = FGH_object(potential, nx, dx, mass)
-    test_2.fgh_fci_solve()
-    temp_2 = test_2.get_solutions()
-    print(temp_2[0][:10])
+    # potential = np.array([0.5*(i/8-8)**2 for i in range(128)])
+    # nx = np.array([128])
+    # dx = np.array([1/8])
+    # mass = 1
 
-    potential = []
-    for i in range(64):
-        for j in range(64):
-            potential.append(0.5*(i/4-8)**2 + 0.5*((j/4)-8)**2)
-    potential = np.array(potential)
+    # test = fgh_object(potential, nx, dx, mass)
+    # test.fgh_fci_solve()
+    # temp = test.get_solutions()
+    # print(temp[0][:10])
 
-    nx = np.array([64,64])
-    dx = np.array([0.25,0.25])
-    mass = 1
+    ### TESTING 1D FLEX
 
-    test_2 = FGH_object(potential, nx, dx, mass)
-    test_2.fgh_mcscf_solve()
-    temp_2 = test_2.get_solutions()
-    print(temp_2[0][:10])
+    # potential = np.array([0.5*(i/8-8)**2 for i in range(128)])
+    # nx = np.array([128])
+    # dx = np.array([1/8])
+    # mass = 1
+
+    # test = fgh_object(potential, nx, dx, mass)
+    # test.fgh_fci_solve()
+    # temp = test.get_solutions()
+    # print(temp[0][:10])
+
+    ### TESTING 1D MCSCF
+
+    # box_size = 1024
+    # divisor = 64
+
+    # potential = np.array([0.5*(i/divisor-8)**2 for i in range(box_size)])
+    # nx = np.array([box_size])
+    # dx = np.array([1])/divisor
+    # mass = 1
+
+    # test = fgh_object(potential, nx, dx, mass)
+    # test.fgh_mcscf_solve()
+    # temp = test.get_solutions()
+    # print(temp[0][:10])
+
+    """
+    2d - testing
+    """
+
+    ### TESTING 2D HARDCODE
+
+    # potential = np.array([0.5*(i/2-8)**2 + 0.5*(j/2-8)**2 for j in range(32) for i in range(32)])
+    # nx = np.array([32,32])
+    # dx = np.array([1/2,1/2])
+    # mass = 1
+
+    # test = fgh_object(potential, nx, dx, mass)
+    # test.fgh_fci_solve()
+    # temp = test.get_solutions()
+    # print(temp[0][:10])
+
+    # plt.contourf(temp[1][0].reshape(nx[1],nx[0]))
+    # plt.show()
+
+    ### TESTING 2D FLEX
+
+    # potential = np.array([0.5*(i-8)**2 + 0.5*(j/2-8)**2 for j in range(32) for i in range(16)])
+    # nx = np.array([16,32])
+    # dx = np.array([1,1/2])
+    # mass = 1
+
+    # test = fgh_object(potential, nx, dx, mass)
+    # test.fgh_fci_solve()
+    # temp = test.get_solutions()
+    # print(temp[0][:10])
+
+    # plt.contourf(temp[1][0].reshape(nx[1],nx[0]))
+    # plt.show()
+
+    ### TESTING 2D MCSCF
+
+    # box_size = [128,128]
+    # divisor = [8,8]
+
+    # potential = np.array([0.5*(i/divisor[0]-8)**2 + 0.5*(j/divisor[1]-8)**2 for j in range(box_size[1]) for i in range(box_size[0])])
+    # nx = np.array([box_size[0],box_size[1]])
+    # dx = np.array([1/divisor[0],1/divisor[1]])
+    # mass = 1
+
+    # test = fgh_object(potential, nx, dx, mass)
+    # test.fgh_mcscf_solve()
+    # temp = test.get_solutions()
+    # print(temp[0][:10])
+
+    # box_size = [128,256]
+    # divisor = [8,16]
+
+    # potential = np.array([0.5*(i/divisor[0]-8)**2 + 0.5*(j/divisor[1]-8)**2 for j in range(box_size[1]) for i in range(box_size[0])])
+    # nx = np.array([box_size[0],box_size[1]])
+    # dx = np.array([1/divisor[0],1/divisor[1]])
+    # mass = 1
+
+    # test = fgh_object(potential, nx, dx, mass)
+    # test.fgh_mcscf_solve()
+    # temp = test.get_solutions()
+    # print(temp[0][:10])
+
+    # plt.contourf(temp[1][22])
+    # plt.show()
+
+    """
+    3d - testing
+    """
+
+    ### TESTING 3D HARDCODE
+
+    # potential = np.array([0.5*(i-8)**2 + 0.5*(j-8)**2 + 0.5*(k-8)**2 for k in range(16) for j in range(16) for i in range(16)])
+    # nx = np.array([16,16,16])
+    # dx = np.array([1,1,1])
+    # mass = 1
+
+    # test = fgh_object(potential, nx, dx, mass)
+    # test.fgh_fci_solve()
+    # temp = test.get_solutions()
+    # print(temp[0][:10])
+
+    ### TESTING 3D FLEX
+
+    # potential = np.array([0.5*(i-6)**2 + 0.5*(j-6)**2 + 0.5*(k-6)**2 for k in range(12) for j in range(12) for i in range(11)])
+    # nx = np.array([11,12,12])
+    # dx = np.array([1,1,1])
+    # mass = 1
+
+    # test = fgh_object(potential, nx, dx, mass)
+    # test.fgh_fci_solve()
+    # temp = test.get_solutions()
+    # print(temp[0][:10])
+
+    ### TESTING 3D MCSCF
+
+    # box_size = 128
+    # divisor = 8
+
+    # potential = []
+    # for i in range(box_size):
+    #     for j in range(box_size):
+    #         for k in range(box_size):
+    #             potential.append(0.5*(i/divisor-8)**2 + 0.5*(j/divisor-8)**2 + 0.5*(k/divisor-8)**2)
+    # potential = np.array(potential)
+
+    # nx = np.array([box_size,box_size,box_size])[::-1]
+    # dx = np.array([1,1,1])/divisor
+    # mass = 1
+
+    # test = fgh_object(potential, nx, dx, mass)
+    # test.fgh_mcscf_solve()
+    # temp = test.get_solutions()
+    # print(temp[0][:10])
+
+    """
+    4d - testing
+    """
+
+    ### TESTING 4D MCSCF
+
+    # box_size = 16
+    # divisor = 1
+
+    # potential = []
+    # for i in range(box_size):
+    #     for j in range(box_size):
+    #         for k in range(box_size):
+    #             for l in range(box_size):
+    #                 potential.append(0.5*(i/divisor-8)**2 + 0.5*(j/divisor-8)**2 + 0.5*(k/divisor-8)**2 + 0.5*(l/divisor-8)**2)
+    # potential = np.array(potential)
+
+    # nx = np.array([box_size,box_size,box_size,box_size])[::-1]
+    # dx = np.array([1,1,1,1])/divisor
+    # mass = 1
+
+    # test = fgh_object(potential, nx, dx, mass)
+    # test.fgh_mcscf_solve()
+    # temp = test.get_solutions()
+    # print(temp[0][:10])
+
