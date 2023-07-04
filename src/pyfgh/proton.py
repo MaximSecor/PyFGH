@@ -1,15 +1,58 @@
-#%%
+"""
+===================================
+===================================
+              ______  _____  _   _  
+              |  ___||  __ \| | | | 
+ _ __   _   _ | |_   | |  \/| |_| | 
+| '_ \ | | | ||  _|  | | __ |  _  | 
+| |_) || |_| || |    | |_\ \| | | | 
+| .__/  \__, |\_|     \____/\_| |_/ 
+| |      __/ |                      
+|_|     |___/                       
+===================================
+===================================
+
+This module quantizes a proton on a molecule and utilizes the main FGH functionality
+
+-----::::Constants::::-----
+KCAL   : Hartree to kcal/mol   : 627.509        
+WVNMBR : Hartree to wavenumber : 349.755*627.509
+
+-----::::Classes included::::-----
+qm_proton: This class is a subclass of the gto.Mole class of the PySCF library and facilitates the quantization of proton by solving the nuclear Time-Independent Schrodinger Equation (TDSE) using FGH. 
+
+"""
+
 import numpy as np
-import matplotlib.pyplot as plt
-from pyscf import gto, scf, dft, cc
+from pyscf import gto, cc
 from pyscf.geomopt.berny_solver import optimize
 from pyfgh.fgh import fgh_object
 
-hartree2kcal = 627.509
-kcal2wavenumber = 349.755
-hartree2wavenumber = hartree2kcal*kcal2wavenumber
+KCAL = 627.509
+WVNMBR = 349.755*627.509
 
 class qm_proton(gto.Mole):
+        
+    """
+    fgh_object: This class provides a brief description of the purpose and functionality of the class. See pyscf.gto.Mole class to find the definition of inherited methods.
+
+    ---Methods---
+        spe         : sto-3g, HF single point energy (SPE) calculation
+        spe_mp2     : ccpvtz, MP2 SPE calculation  
+        spe_ccsd    : ccpvtz, CCSD SPE calculation
+        geom_opt    : Geomerty optimizes the molecule
+        grid_gen    : Generates the PES of the proton using sto-3g, HF SPEs
+        grid_refine : Refines the PES of the proton using ccpvtz, MP2 OR ccpvtz, CCSD SPEs
+        grid_solve  : Solves the TDSE of the proton on the PES using FGH
+    
+    ---Usage---
+        Instantiate the class         : `instance = qm_proton()`
+        Define the system             : `instance.build(unit = 'B', atom = mol_geom, basis = '321g', verbose = 0)
+        Perform geometry optimization : `instance.geom_opt()`
+        Generate the PES              : `instance.grid_gen(2, np.array([8,8,8]), np.array([0.2,0.2,0.2]))`
+        Refine the PES                : `instance.grid_refine()`
+        Solve the TDSE                : `instance.grid_solve()`
+    """
     
     def spe(self):
         self.build(atom = self.sys, basis = 'sto3g', verbose = 0)
@@ -66,7 +109,7 @@ class qm_proton(gto.Mole):
         self.q = 0
     
         for ener,coord in zip(self.grid_ener,self.grid_coord):
-            if ener*hartree2wavenumber<self.enlim:
+            if ener*WVNMBR<self.enlim:
                 self.sys = coord
                 if self.method == 'mp2':
                     print(self.q)
@@ -82,7 +125,7 @@ class qm_proton(gto.Mole):
     def grid_solve(self):
         self.fgh_solver = fgh_object(self.grid_ener, self.nx, self.dx, mass=1836)
         self.fgh_solver.fgh_fci_solve()
-        self.solutions = self.fgh_solver.get_solutions()
+        self.protsoln = self.fgh_solver.solutions
                     
 if __name__ == "__main__":
 
@@ -93,8 +136,8 @@ if __name__ == "__main__":
     mol.geom_opt()
     mol.grid_gen(2, np.array([8,8,8]), np.array([0.2,0.2,0.2]))
     # mol.grid_solve()
-    # hf_soln = mol.solutions
+    # hf_soln = mol.protsoln
     mol.grid_refine()
     mol.grid_solve()
-    mp2_soln = mol.solutions
-    print(mp2_soln[0][0]*hartree2kcal,(mp2_soln[0][:10]-mp2_soln[0][0])*hartree2wavenumber)
+    mp2_soln = mol.protsoln
+    print(mp2_soln[0][0]*KCAL,(mp2_soln[0][:10]-mp2_soln[0][0])*WVNMBR)

@@ -1,3 +1,25 @@
+"""
+===================================
+===================================
+              ______  _____  _   _  
+              |  ___||  __ \| | | | 
+ _ __   _   _ | |_   | |  \/| |_| | 
+| '_ \ | | | ||  _|  | | __ |  _  | 
+| |_) || |_| || |    | |_\ \| | | | 
+| .__/  \__, |\_|     \____/\_| |_/ 
+| |      __/ |                      
+|_|     |___/                       
+===================================
+===================================
+
+This module implements the main functionality of pyFGH.
+
+-----::::Classes included::::-----
+freq_data: This class provides a brief description of the purpose and functionality of the class.
+IRSEC: This class provides a brief description of the purpose and functionality of the class.
+
+"""
+
 import cclib
 import seaborn as sns; sns.set()
 import numpy as np

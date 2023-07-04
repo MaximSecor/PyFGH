@@ -22,7 +22,7 @@ fgh_flex: FCI FGH flexible accept any number of dimensions with any number of po
 fgh_mcscf: MCSCF FGH flexible accept any number of dimensions with any number of points and any distance seperation along each dimension
 
 -----::::Classes included::::-----
-fgh_object:
+fgh_object: This class provides a brief description of the purpose and functionality of the class.
 
 """
 
@@ -334,24 +334,25 @@ class fgh_object:
     fgh_object: This class provides a brief description of the purpose and functionality of the class.
 
     ---Methods---
-        potential  : 1D ndarray : N-dimensional potential energy surface in Hartree
-        nx         : list       : Number of points along the grid
+        __init__        : Initializes fgh_object with potential, # grid point, distance between points, and particle mass.
+        fgh_fci_solve   : Solves the Time Independent Schrodinger Equation (TDSE) using the appropriate FCI FGH function.
+        fgh_mcscf_solve : Solves the TDSE using the MCSCF FGH function.
     
     ---Usage---
-        Instantiate the class : `instance = ClassName()`
-        Access class methods  : `instance.method()`
+        Instantiate the class : `instance = fgh_object(potential, nx, dx, mass)`
+        Solve the system      : `instance.fgh_fci_solve()` OR `instance.fgh_mcscf_solve()`
     """
 
     def __init__(self, potential: np.ndarray, nx: np.ndarray, dx: np.ndarray, mass: float):
 
         """
-        __init__ method : This method initializes the class instance.
+        __init__ method : This method initializes the class instance
 
         ---Args---
-        - parameter1: Description of parameter1.
-        - parameter2: Description of parameter2.
-        - parameter1: Description of parameter1.
-        - parameter2: Description of parameter2.
+            potential : 1D ndarray : Flattened N-dimensional potential energy surface in Hartree 
+            nx        : 1D ndarray : Interger numbers of points on the grid in each dimension
+            dx        : 1D ndarray : Distance between grid points in each dimension
+            mass      : float      : Mass of the particle
         """
 
         self.potential = potential
@@ -362,13 +363,7 @@ class fgh_object:
     def fgh_fci_solve(self):
 
         """
-        fgh_fci_solve(): Brief description of method1. 1D will always be hardcoded, 
-
-        Args:
-        - parameter: Description of parameter.
-
-        Returns:
-        - Description of return value.
+        fgh_fci_solve(): The method selects which FGH FCI solver will be best and then solves the TISE. If dimensions < 4 and all the dimensions have the same number of grid points and grid point separation then the appropriately dimensioned hardcoded solver will be chosen, otherwise the flex solven will be used.
         """
 
         q = sum([1 if i != self.nx[0] else 0 for i in self.nx])
@@ -386,10 +381,12 @@ class fgh_object:
             self.solutions = fgh_flex(self.potential,self.nx,self.dx,self.mass)
         
     def fgh_mcscf_solve(self):
-        self.solutions = fgh_mcscf(self.potential,self.nx,self.dx,self.mass)
+
+        """
+        fgh_mcscf_solve(): The method calls the FGH MCSCF solver.
+        """
         
-    def get_solutions(self):
-        return self.solutions
+        self.solutions = fgh_mcscf(self.potential,self.nx,self.dx,self.mass)
 
 if __name__ == "__main__":
 
@@ -397,182 +394,13 @@ if __name__ == "__main__":
     1d - testing
     """
 
-    ### TESTING 1D HARDCODE
+    potential = np.array([0.5*(i/8-8)**2 for i in range(128)])
+    nx = np.array([128])
+    dx = np.array([1/8])
+    mass = 1
 
-    # potential = np.array([0.5*(i/8-8)**2 for i in range(128)])
-    # nx = np.array([128])
-    # dx = np.array([1/8])
-    # mass = 1
-
-    # test = fgh_object(potential, nx, dx, mass)
-    # test.fgh_fci_solve()
-    # temp = test.get_solutions()
-    # print(temp[0][:10])
-
-    ### TESTING 1D FLEX
-
-    # potential = np.array([0.5*(i/8-8)**2 for i in range(128)])
-    # nx = np.array([128])
-    # dx = np.array([1/8])
-    # mass = 1
-
-    # test = fgh_object(potential, nx, dx, mass)
-    # test.fgh_fci_solve()
-    # temp = test.get_solutions()
-    # print(temp[0][:10])
-
-    ### TESTING 1D MCSCF
-
-    # box_size = 1024
-    # divisor = 64
-
-    # potential = np.array([0.5*(i/divisor-8)**2 for i in range(box_size)])
-    # nx = np.array([box_size])
-    # dx = np.array([1])/divisor
-    # mass = 1
-
-    # test = fgh_object(potential, nx, dx, mass)
-    # test.fgh_mcscf_solve()
-    # temp = test.get_solutions()
-    # print(temp[0][:10])
-
-    """
-    2d - testing
-    """
-
-    ### TESTING 2D HARDCODE
-
-    # potential = np.array([0.5*(i/2-8)**2 + 0.5*(j/2-8)**2 for j in range(32) for i in range(32)])
-    # nx = np.array([32,32])
-    # dx = np.array([1/2,1/2])
-    # mass = 1
-
-    # test = fgh_object(potential, nx, dx, mass)
-    # test.fgh_fci_solve()
-    # temp = test.get_solutions()
-    # print(temp[0][:10])
-
-    # plt.contourf(temp[1][0].reshape(nx[1],nx[0]))
-    # plt.show()
-
-    ### TESTING 2D FLEX
-
-    # potential = np.array([0.5*(i-8)**2 + 0.5*(j/2-8)**2 for j in range(32) for i in range(16)])
-    # nx = np.array([16,32])
-    # dx = np.array([1,1/2])
-    # mass = 1
-
-    # test = fgh_object(potential, nx, dx, mass)
-    # test.fgh_fci_solve()
-    # temp = test.get_solutions()
-    # print(temp[0][:10])
-
-    # plt.contourf(temp[1][0].reshape(nx[1],nx[0]))
-    # plt.show()
-
-    ### TESTING 2D MCSCF
-
-    # box_size = [128,128]
-    # divisor = [8,8]
-
-    # potential = np.array([0.5*(i/divisor[0]-8)**2 + 0.5*(j/divisor[1]-8)**2 for j in range(box_size[1]) for i in range(box_size[0])])
-    # nx = np.array([box_size[0],box_size[1]])
-    # dx = np.array([1/divisor[0],1/divisor[1]])
-    # mass = 1
-
-    # test = fgh_object(potential, nx, dx, mass)
-    # test.fgh_mcscf_solve()
-    # temp = test.get_solutions()
-    # print(temp[0][:10])
-
-    # box_size = [128,256]
-    # divisor = [8,16]
-
-    # potential = np.array([0.5*(i/divisor[0]-8)**2 + 0.5*(j/divisor[1]-8)**2 for j in range(box_size[1]) for i in range(box_size[0])])
-    # nx = np.array([box_size[0],box_size[1]])
-    # dx = np.array([1/divisor[0],1/divisor[1]])
-    # mass = 1
-
-    # test = fgh_object(potential, nx, dx, mass)
-    # test.fgh_mcscf_solve()
-    # temp = test.get_solutions()
-    # print(temp[0][:10])
-
-    # plt.contourf(temp[1][22])
-    # plt.show()
-
-    """
-    3d - testing
-    """
-
-    ### TESTING 3D HARDCODE
-
-    # potential = np.array([0.5*(i-8)**2 + 0.5*(j-8)**2 + 0.5*(k-8)**2 for k in range(16) for j in range(16) for i in range(16)])
-    # nx = np.array([16,16,16])
-    # dx = np.array([1,1,1])
-    # mass = 1
-
-    # test = fgh_object(potential, nx, dx, mass)
-    # test.fgh_fci_solve()
-    # temp = test.get_solutions()
-    # print(temp[0][:10])
-
-    ### TESTING 3D FLEX
-
-    # potential = np.array([0.5*(i-6)**2 + 0.5*(j-6)**2 + 0.5*(k-6)**2 for k in range(12) for j in range(12) for i in range(11)])
-    # nx = np.array([11,12,12])
-    # dx = np.array([1,1,1])
-    # mass = 1
-
-    # test = fgh_object(potential, nx, dx, mass)
-    # test.fgh_fci_solve()
-    # temp = test.get_solutions()
-    # print(temp[0][:10])
-
-    ### TESTING 3D MCSCF
-
-    # box_size = 128
-    # divisor = 8
-
-    # potential = []
-    # for i in range(box_size):
-    #     for j in range(box_size):
-    #         for k in range(box_size):
-    #             potential.append(0.5*(i/divisor-8)**2 + 0.5*(j/divisor-8)**2 + 0.5*(k/divisor-8)**2)
-    # potential = np.array(potential)
-
-    # nx = np.array([box_size,box_size,box_size])[::-1]
-    # dx = np.array([1,1,1])/divisor
-    # mass = 1
-
-    # test = fgh_object(potential, nx, dx, mass)
-    # test.fgh_mcscf_solve()
-    # temp = test.get_solutions()
-    # print(temp[0][:10])
-
-    """
-    4d - testing
-    """
-
-    ### TESTING 4D MCSCF
-
-    # box_size = 16
-    # divisor = 1
-
-    # potential = []
-    # for i in range(box_size):
-    #     for j in range(box_size):
-    #         for k in range(box_size):
-    #             for l in range(box_size):
-    #                 potential.append(0.5*(i/divisor-8)**2 + 0.5*(j/divisor-8)**2 + 0.5*(k/divisor-8)**2 + 0.5*(l/divisor-8)**2)
-    # potential = np.array(potential)
-
-    # nx = np.array([box_size,box_size,box_size,box_size])[::-1]
-    # dx = np.array([1,1,1,1])/divisor
-    # mass = 1
-
-    # test = fgh_object(potential, nx, dx, mass)
-    # test.fgh_mcscf_solve()
-    # temp = test.get_solutions()
-    # print(temp[0][:10])
+    test = fgh_object(potential, nx, dx, mass)
+    test.fgh_fci_solve()
+    temp = test.solutions
+    print(temp[0][:10])\
 
