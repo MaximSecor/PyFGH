@@ -2,7 +2,7 @@
 
 To Do:
 
-FGH code (Completed 26 June, needed: Possible further testing of MCSCF, visualization of wavefunctions)
+FGH code: (Completed 26 June, needed: Possible further testing of MCSCF, visualization of wavefunctions)
 FGH for quantizing a proton: defined box, autobox, cutoff tests,gridpoint density tests, CUDA, maybe dataclass for points?
 FGH for normal mode analysis and vibrational polarizabilities: all pyscf, maybe dataclass for Normal modes
 IRSEC module: for gaussian logs and pyscf, use inheritance
