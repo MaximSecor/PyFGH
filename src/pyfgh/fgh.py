@@ -15,14 +15,14 @@
 This module implements the main functionality of pyFGH.
 
 -----::::Functions included::::-----
-fgh_hardcode_1d: This function is a hard-coded, jitted 1D FGH calculation
-fgh_hardcode_2d: Hard-coded FCI, jitted 2D FGH, same number of grid points and same distance between grid points in each dimension
-fgh_hardcode_3d: Hard-coded FCI, jitted 3D FGH, same number of grid points and same distance between grid points in each dimension
-fgh_flex: FCI FGH flexible accept any number of dimensions with any number of points and any distance seperation along each dimension
-fgh_mcscf: MCSCF FGH flexible accept any number of dimensions with any number of points and any distance seperation along each dimension
+fgh_hardcode_1d : This function is a hard-coded, jitted 1D FGH calculation
+fgh_hardcode_2d : Hard-coded FCI, jitted 2D FGH, same number of grid points and same distance between grid points in each dimension
+fgh_hardcode_3d : Hard-coded FCI, jitted 3D FGH, same number of grid points and same distance between grid points in each dimension
+fgh_flex : FCI FGH flexible accept any number of dimensions with any number of points and any distance seperation along each dimension
+fgh_mcscf : MCSCF FGH flexible accept any number of dimensions with any number of points and any distance seperation along each dimension
 
 -----::::Classes included::::-----
-fgh_object: This class provides a brief description of the purpose and functionality of the class.
+fgh_object : This class provides a brief description of the purpose and functionality of the class.
 
 """
 
@@ -331,7 +331,7 @@ def fgh_mcscf(potential: np.ndarray, nx: np.ndarray, dx: np.ndarray, mass: float
 class fgh_object:
 
     """
-    fgh_object: This class provides a brief description of the purpose and functionality of the class.
+    fgh_object : This class provides a brief description of the purpose and functionality of the class.
 
     ---Methods---
         __init__        : Initializes fgh_object with potential, # grid point, distance between points, and particle mass.

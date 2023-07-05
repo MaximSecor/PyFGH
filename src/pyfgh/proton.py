@@ -19,7 +19,7 @@ KCAL   : Hartree to kcal/mol   : 627.509
 WVNMBR : Hartree to wavenumber : 349.755*627.509
 
 -----::::Classes included::::-----
-qm_proton: This class is a subclass of the gto.Mole class of the PySCF library and facilitates the quantization of proton by solving the nuclear Time-Independent Schrodinger Equation (TDSE) using FGH. 
+qm_proton : This class is a subclass of the gto.Mole class of the PySCF library and facilitates the quantization of proton by solving the nuclear Time-Independent Schrodinger Equation (TDSE) using FGH. 
 
 """
 
@@ -34,7 +34,7 @@ WVNMBR = 349.755*627.509
 class qm_proton(gto.Mole):
         
     """
-    fgh_object: This class provides a brief description of the purpose and functionality of the class. See pyscf.gto.Mole class to find the definition of inherited methods.
+    fgh_object : This class provides a brief description of the purpose and functionality of the class. See pyscf.gto.Mole class to find the definition of inherited methods.
 
     ---Methods---
         spe         : sto-3g, HF single point energy (SPE) calculation
@@ -55,18 +55,53 @@ class qm_proton(gto.Mole):
     """
     
     def spe(self):
+
+        """
+        spe method : This method performs a sto-3g, HF SPE calculation
+
+        ---Params---
+            en : float : The total energy using sto-3g, HF
+        """
+
         self.build(atom = self.sys, basis = 'sto3g', verbose = 0)
         self.en = self.HF().run().e_tot
         
     def spe_mp2(self):
+
+        """
+        spe_mp2 method : This method performs a ccpvtz, MP2 SPE calculation
+
+        ---Params---
+            mp2_en : float : The total energy using ccpvtz, MP2
+        """
+
         self.build(atom = self.sys, basis = 'ccpvtz', verbose = 0)
         self.mp2_en = self.HF().run().MP2().run().e_tot
         
     def spe_ccsd(self):
+
+        """
+        spe_ccsd method : This method performs a ccpvtz, CCSD SPE calculation
+
+        ---Params---
+            ccsd_en : float : The total energy using ccpvtz, CCSD
+        """
+
         self.build(atom = self.sys, basis = 'ccpvtz', verbose = 0)
         self.ccsd_en = cc.CCSD(self.HF().run()).run().e_tot
 
     def geom_opt(self):
+
+        """
+        geom_opt method : This method performs a sto-3g, HF geometry optimization
+
+        ---Params---
+            sys      : list    : List of atoms and coordinates describing the molecule
+            en       : float   : The total energy using sto-3g, HF
+            eqen     : float   : The optimized total energy using sto-3g, HF
+            eqcoords : ndarray : The optimized coordinates
+        """
+
         self.sys = optimize(self.HF(), maxsteps=100)._atom
         self.build(atom = self.sys, basis = 'sto3g', verbose = 0)    
         self.en = self.HF().run().e_tot
@@ -74,6 +109,22 @@ class qm_proton(gto.Mole):
         self.eqcoords = self.atom_coords(unit='Bohr')
         
     def grid_gen(self, h_atom: int, nx: np.ndarray, dx: np.ndarray):
+
+        """
+        grid_gen method : This method generates the PES of the proton using sto-3g, HF SPEs
+
+        ---Args---
+            h_atom : int        : Index of proton to be quantized
+            nx     : 1D ndarray : Interger numbers of points on the grid in each dimension
+            dx     : 1D ndarray : Distance between grid points in each dimension
+
+        ---Params---
+            sys        : list       : List of atoms and coordinates describing the molecule
+            coords     : ndarray    : XYZ coordinates of each atom
+            grid_ener  : 1D ndarray : The sto-3g, HF total energy at each grid point
+            grid_coord : 2D ndarray : XYZ coordinates of each atom at each grid point
+            temp       : 1D ndarray : Temporary array holding the XYZ coordiantes of the proton at each grid point
+        """
 
         self.h_atom = h_atom        
         self.nx = nx
@@ -103,6 +154,18 @@ class qm_proton(gto.Mole):
         self.grid_coord = np.array(self.grid_coord)
         
     def grid_refine(self, method='mp2', enlim=5*10**3):
+
+        """
+        grid_refine method : This method refines the PES of the proton using MP2 or CCSD SPEs with a ccpvtz basis set
+
+        ---Args---
+            method : str   : The post-Hartree-Fock method to be used to refine the grid: 'mp2' OR 'ccsd'
+            enlim  : float : The energy cutoff for refining the grid
+
+        ---Params---
+            q          : list       : A grid point counter
+            coords     : ndarray    : XYZ coordinates of each atom
+        """
         
         self.method = method
         self.enlim = enlim
@@ -123,6 +186,14 @@ class qm_proton(gto.Mole):
         self.grid_ener -= np.min(self.grid_ener)
 
     def grid_solve(self):
+
+        """
+        grid_solve method : This method solves the TDSE of the proton on the PES using FGH
+
+        ---Params---
+            protsoln : tuple : The proton vibrational energies and wavefunctions calcualted useing FGH
+        """
+
         self.fgh_solver = fgh_object(self.grid_ener, self.nx, self.dx, mass=1836)
         self.fgh_solver.fgh_fci_solve()
         self.protsoln = self.fgh_solver.solutions

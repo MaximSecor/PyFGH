@@ -12,11 +12,11 @@
 ===================================
 ===================================
 
-This module implements the main functionality of pyFGH.
+This module create IRSEC plots from Gaussian log files or using PySCF and the FGH functionality.
 
 -----::::Classes included::::-----
-freq_data: This class provides a brief description of the purpose and functionality of the class.
-IRSEC: This class provides a brief description of the purpose and functionality of the class.
+freq_data: This class collects the frequency data.
+IRSEC: This class creates elegant IRSEC plots.
 
 """
 
@@ -28,9 +28,38 @@ import matplotlib as mpl
 
 class freq_data(object):
 
-    def __init__(self, logfile, scaling_factor):
+    """
+    freq_data: This class provides a brief description of the purpose and functionality of the class.
+
+    ---Methods---
+        __init__   : Initializes freq_data with data from a logfile, a IR scaling factor, the width of the lorentzians used for the IRSEC, and the IRSEC plot limits. It also initializes the frequencies and the intensities. It also creates the curve to be plotted.
+        lorentzian : Creates a lorentzian to be used in creating the IR lineshape.
+        curvefit   : Creates an IR lineshape to be used in plotting the IRSEC.
+    
+    ---Usage---
+        Instantiate the class : `instance = freq_data(path_neutral, scaling_factor)`
+        Plot the IR spectra   : `plt.plot(instance.curve)`
+    """
+
+    def __init__(self, logfile, scale):
+
+        """
+        __init__ method : This method initializes the class instance
+
+        ---Args---
+            logfile : str   : Path to Gaussian logfile
+            scale   : float : scaling factor of IR frequencies to match experiment
+
+        ---Params---
+            data  : ccData_optdone_bool : Frequencies data
+            freqs : 1D ndarray          : IR frequencies
+            irs   : 1D ndarray          : IR intensities
+            FWHM  : 1D ndarray          : Lorentizian width
+            xlim  : float               : Curve limits
+        """
+
         self.data  = cclib.io.ccread(logfile)
-        self.scale = scaling_factor
+        self.scale = scale
         self.freqs = self.data.vibfreqs*self.scale
         self.irs   = self.data.vibirs
         self.FWHM  = 6
@@ -38,9 +67,30 @@ class freq_data(object):
         self.curvefit()
     
     def lorentzian(self,x0,h,x,gm):
-         return (h*np.power(gm/2,2))/(np.power(x-x0,2) + np.power(gm/2,2))
+        """
+        lorentzian method : This method creates a lorentzian to be used in creating the IR lineshape.
+
+        ---Args---
+            x0 : str   : The center of the lorentzian
+            h  : str   : The height of the lorentzian
+            x  : str   : The domain of the plotted lorentzian
+            gm : str   : The width of the lorentzian
+        ---Returns---
+            output : 1D ndarray : Lorentzian about the frequency
+        """
+        return (h*np.power(gm/2,2))/(np.power(x-x0,2) + np.power(gm/2,2))
         
     def curvefit(self):
+
+        """
+        curvefit method : This method creates the IR lineshape from lorentzians.
+
+        ---Params---
+            bands : zip        : Paired frequencies and associated intensities
+            x     : 1D ndarray : The points on the domain to be plotted
+            curve : 1D ndarray : The IR spectra curve being generated
+        """
+
         bands = zip(self.freqs,self.irs)
         self.x = np.arange(self.xlim[0],self.xlim[1],self.xlim[2])
         self.curve = np.zeros_like(self.x) 
@@ -48,18 +98,49 @@ class freq_data(object):
             self.curve += self.lorentzian(band[0],band[1],self.x,self.FWHM) 
 
 class IRSEC:
+
+    """
+    IRSEC: This class calls the freq_data class and plot the simulated IRSEC
+
+    ---Methods---
+        __init__    : Initializes the IRSEC class and uses the freq_data class to generate the IR spectra plots used for IRSEC.
+        plotSpectra : Creates an elegant IRSEC plot.
     
-    def __init__(self, neutral_logfile, other_files, scaling_factor):
+    ---Usage---
+        Instantiate the class : `instance = IRSEC(path_neutral, path_other, scaling_factor)`
+        Plot the IRSEC        : `instance.plotSpectra(0,num=5,xlim=[1650,1500],show=True,save='test.png')`
+    """
+    
+    def __init__(self, neutral_logfile, other_files, scale):
+
+        """
+        __init__ method : This method initializes the class instance
+
+        ---Args---
+            neutral_logfile : str         : Path to the Gaussian logfile containing the neutral molecule
+            other_files     : list[str]   : Paths to the other Gaussian logfile containing the other species of the molecule
+            scale           : float       : scaling factor of IR frequencies to match experiment
+        """
         
-        self.color_dict = {"blue": "#4472C4", "green": "#70AD47", "orange": "#ED7D31", "purple": "#7030A0", "yellow": "#BF9000", "red": "#377F80", "Orange": "#ED7D31", "Pink": "#FFOOFF", "black": "#000000"}
-        self.neutral = freq_data(neutral_logfile, scaling_factor)
+        self.neutral = freq_data(neutral_logfile, scale)
         self.freq  = self.neutral.x
         
         self.others = []
         for file in other_files:
-            self.others.append(freq_data(file, scaling_factor))
+            self.others.append(freq_data(file, scale))
             
-    def plotSpectra(self,other_file_idx,xlim,num=5,show=True,save='-IRSEC_E1PT.png',colors='blue'):
+    def plotSpectra(self,other_file_idx,xlim,num=5,show=True,save='-IRSEC_E1PT.png'):
+
+        """
+        plotSpectra method : This method creates an elegant IRSEC plot
+
+        ---Args---
+            other_file_idx : int         : Which species other than the neutral to use in the IRSEC
+            xlim           : list[float] : The bounds of the domain of the IRSEC plot
+            num            : int         : Number of intermediate IR plots in IRSEC
+            show           : boolean     : If true, show plot of IRSEC
+            save           : str         : Path to where IRSEC plot will be saved
+        """
         
         mpl.rcParams['font.family'] = 'Helvetica'
         plt.rcParams['font.size'] = 18
@@ -114,5 +195,11 @@ if __name__ == "__main__":
     path_other = ['/Users/maximsecor/Desktop/BIP/ElectroChem/Results/BIP/opt_freq/E0PT.log','/Users/maximsecor/Desktop/BIP/ElectroChem/Results/BIP/opt_freq/E1PT.log']
     scaling_factor = 0.962
 
-    mol = IRSEC(path_neutral, path_other, scaling_factor)
-    mol.plotSpectra(0,num=5,xlim=[1650,1500],show=True,save='test.png',colors='blue')
+    # mol = IRSEC(path_neutral, path_other, scaling_factor)
+    # mol.plotSpectra(0,num=5,xlim=[1650,1500],show=True,save='test.png')
+
+    mol = freq_data(path_neutral, scaling_factor)
+    print(mol.freqs)
+    print(type(mol.freqs))
+    plt.plot(mol.curve)
+    plt.show()
