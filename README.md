@@ -2,10 +2,10 @@
 PyFGH is a Python library for dealing with FGH
 
 ## Installation
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install PyFGH. (Available Soon)
+Use the package manager [pip](https://test.pypi.org/project/pyfgh/0.0.1/) to install PyFGH.
 
 ```bash
-pip install pyfgh (Available Soon)
+pip install -i https://test.pypi.org/simple/ pyfgh==0.0.1
 ```
 
 ## Usage
@@ -15,6 +15,7 @@ from pyfgh import fgh
 from pyfgh import proton
 from pyfgh import irsec
 from pyfgh import stark
+
 
 # returns eigenenergies and eigenfunctions of the simple harmonic oscillator 
 
