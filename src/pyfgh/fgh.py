@@ -278,6 +278,60 @@ def mean_field_potential(potential, wavefnc, axis):
 
     return average_except_one(potential*tensor_product(wavefnc_temp), axis)
 
+def potential_term_calc(potential, wavefnc_1, wavefnc_2):
+
+    """
+    mean_field_potential : This function calculates the meanfield potential along a given dimension
+
+    ---Args---
+        potential : ND np.ndarray : The total potential
+        wavefnc   : ND np.ndarray : The total wavefunction
+        axis      : int           : The axis associated with dimension for which the mean field potential is calculated
+
+    ---Returns---
+        result : 1D ndarray : The mean field potential along a given dimension 
+    """
+    
+    wavefnc_temp = []
+    for k,wave_k in enumerate(wavefnc):
+        if k != axis:
+            wavefnc_temp.append(wave_k*wave_k)
+        else:
+            wavefnc_temp.append(np.array([1 for j in range(len(wave_k))]))
+
+    return average_except_one(potential*tensor_product(wavefnc_temp), axis)
+
+@jit(nopython=True)
+def fgh_get_kin(potential: np.ndarray, nx: int, dx: float, mass: float) -> tuple:
+    
+    """
+    fgh_hardcode_1d : This function is a hard-coded, jitted 1D FGH calculation
+
+    ---Args---
+        potential : 1D ndarray : potential energy in Hartree along 1 dimension
+        nx        : int        : number of points along the grid
+        dx        : float      : distance between grid points
+        mass      : float      : mass of the particle
+
+    ---Returns---
+        energies      : 1D ndarray : Energy eigenvalues in Hartree
+        wavefunctions : 2D ndarray : Energy eigenfunctions
+    """
+
+    k = np.pi/dx
+    m = (1/(2*mass))
+    tmat = []
+
+    for i in range(nx):
+        for j in range(nx):
+            dji = j-i
+            if i == j: 
+                tmat.append((m*k**2)/3)
+            else: 
+                tmat.append((m*2*k**2)/(np.pi**2)*(((-1)**dji)/(dji**2)))
+
+    return np.array(tmat).reshape(nx,nx)
+
 def fgh_mcscf(potential: np.ndarray, nx: np.ndarray, dx: np.ndarray, mass: float, scf_iter = 2, basis_size = 5):
 
     """
@@ -296,6 +350,9 @@ def fgh_mcscf(potential: np.ndarray, nx: np.ndarray, dx: np.ndarray, mass: float
         wavefunctions : 2D ndarray : Energy eigenfunctions
     """
 
+    scf_iter = 10
+    basis_size = 5
+
     nx = nx[::-1]
     dx = dx[::-1]
     potential = potential.reshape(nx)
@@ -304,27 +361,39 @@ def fgh_mcscf(potential: np.ndarray, nx: np.ndarray, dx: np.ndarray, mass: float
     for k in range(scf_iter):
         mean_field_pots = [mean_field_potential(potential, wavefnc, axis) for axis in range(len(wavefnc))]
         wavefnc = [fgh_hardcode_1d(pot,nx[i],dx[i],mass)[1][0] for i, pot in enumerate(mean_field_pots)]
-                                
-    dimensional_basis_sets = [fgh_hardcode_1d(pot,nx[i],dx[i],mass)[1][:basis_size] for i, pot in enumerate(mean_field_pots)]
 
+    dimensional_basis_sets = [fgh_hardcode_1d(pot,nx[i],dx[i],mass)[1][:basis_size] for i, pot in enumerate(mean_field_pots)]
     CI_idx = [[j for j in range(basis_size)] for i in range(len(nx))]
     combinations = list(itertools.product(*CI_idx))
-    full_basis = np.array([tensor_product([dim[idx] for dim, idx in zip(dimensional_basis_sets, combination)]) for combination in combinations])
+    full_basis_size = len(combinations)
 
-    full_basis_reshaped = full_basis.reshape(full_basis.shape[0], -1)
-    vmat = np.dot(full_basis_reshaped * potential.ravel(), full_basis_reshaped.T)
-
-    laplacian = [np.gradient(np.gradient(full_basis, dx[i], axis=i+1), dx[i], axis=i+1) for i in range(len(nx))]
-    tmat = np.zeros((len(full_basis),len(full_basis)))
-    for lap_k in laplacian:
-        lap_k_reshaped = lap_k.reshape(lap_k.shape[0], -1)
-        tmat += np.dot(lap_k_reshaped, full_basis_reshaped.T)
+    hmat = np.zeros((full_basis_size,full_basis_size))
+    for i in range(0,full_basis_size,1):
+        for j in range(i,full_basis_size,1):
             
-    hmat = -0.5*mass*tmat + vmat
+            V, T = 0, 0
+            wave_similarity = [a==b for a,b in zip(combinations[i],combinations[j])]
+            basis_function_1 = [dimensional_basis_sets[k][lvl] for k,lvl in enumerate(combinations[i])]
+            basis_function_2 = [dimensional_basis_sets[k][lvl] for k,lvl in enumerate(combinations[j])]
+    
+            V = np.sum(tensor_product(basis_function_1)*potential*tensor_product(basis_function_2))
+            
+            if sum(wave_similarity) == len(combinations[i]):
+                T = np.sum([np.dot(np.dot(fgh_get_kin(mean_field_pots[i], nx[i], dx[i], mass),basis),basis) for i,basis in enumerate(basis_function_1)])
+                
+            if sum(wave_similarity) == len(combinations[i])-1:
+                idx_f = np.where(np.array(wave_similarity)==False)[0][0]
+                T = np.dot(np.dot(fgh_get_kin(mean_field_pots[idx_f], nx[idx_f], dx[idx_f], mass),basis_function_2[idx_f]),basis_function_1[idx_f])
+                
+            hmat[i,j] = T + V
+                          
+    hmat = hmat+hmat.T-np.diag(np.diag(hmat))
     hmat_soln = np.linalg.eigh(hmat)
-
     energies = hmat_soln[0]
-    wavefunctions = np.rollaxis(np.tensordot(hmat_soln[1].T,full_basis,axes=(1,0)),hmat_soln[1].T.ndim-1,1)
+    
+    wavefunctions = []
+    for i in range(len(energies)):
+        wavefunctions.append(np.sum([coeff*tensor_product([dimensional_basis_sets[k][lvl] for k,lvl in enumerate(combinations[j])]).T for j,coeff in enumerate(hmat_soln[1].T[i])],axis=0))
 
     return energies, wavefunctions
 
@@ -391,16 +460,18 @@ class fgh_object:
 if __name__ == "__main__":
 
     """
-    1d - testing
+    2d - testing
     """
 
-    potential = np.array([0.5*(i/8-8)**2 for i in range(128)])
-    nx = np.array([128])
-    dx = np.array([1/8])
+    pts = 32
+    spc = 2
+
+    potential = np.array([0.5*(i/spc-8)**2 + 0.5*(j/spc-8)**2 for j in range(pts) for i in range(pts)])
+    nx = np.array([pts,pts])
+    dx = np.array([1/spc,1/spc])
     mass = 1
 
     test = fgh_object(potential, nx, dx, mass)
-    test.fgh_fci_solve()
+    test.fgh_mcscf_solve()
     temp = test.solutions
-    print(temp[0][:10])\
-
+    print(temp[0][:10])

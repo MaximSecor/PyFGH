@@ -15,7 +15,7 @@ from pyfgh import fgh
 from pyfgh import proton
 from pyfgh import irsec
 from pyfgh import stark
-
+import numpy as np
 
 # returns eigenenergies and eigenfunctions of the simple harmonic oscillator 
 
