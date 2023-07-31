@@ -1,0 +1,18 @@
+import numpy as np
+from pyfgh.fgh import fgh_object
+
+hartree2kcal = 627.509
+kcal2wavenumber = 349.755
+proton_mass = 1836
+k = proton_mass*((3000/(hartree2kcal*kcal2wavenumber))**2)
+
+potential_3dho = np.array([0.5*k*(i/16-2)**2 + 0.5*k*(j/16-2)**2 + 0.5*k*(l/16-2)**2 for l in range(64) for j in range(64) for i in range(64)])
+nx = np.array([64,64,64])
+dx = np.array([1/16,1/16,1/16])
+
+fgh_instance = fgh_object(potential_3dho, nx, dx, proton_mass)
+fgh_instance.fgh_mcscf_solve()
+energies = fgh_instance.solutions[0]
+wavefunctions = fgh_instance.solutions[1]
+
+print(energies[:10]*hartree2kcal*kcal2wavenumber)
